@@ -63,9 +63,51 @@ uv run mypy app      # type-check
 ## Database Migrations
 
 Alembic is configured against the async engine and reads `DATABASE_URL` from the
-environment. Domain models and the first migration are added in a later task.
+environment.
 
 ```bash
 uv run alembic revision --autogenerate -m "message"
 uv run alembic upgrade head
 ```
+
+## Docker
+
+The production image is built with `uv` and honours `uv.lock` exactly.
+
+```bash
+# Build
+docker build -t ai-nutrition-coach .
+
+# Run against a PostgreSQL instance on the host
+docker run --rm -p 8000:8000 \
+  -e DATABASE_URL="postgresql://postgres:root@host.docker.internal:5432/ai-nutrition-coach" \
+  -e JWT_SECRET_KEY="$(python -c 'import secrets; print(secrets.token_urlsafe(48))')" \
+  -e APP_ENV=production \
+  ai-nutrition-coach
+```
+
+## Deployment (Render)
+
+`render.yaml` is a Blueprint describing the web service and a managed PostgreSQL
+database.
+
+1. Push this repository to GitHub.
+2. Render Dashboard → **New → Blueprint** → select the repository. Render reads
+   `render.yaml`, creates the web service and the database, and wires `DATABASE_URL`
+   automatically.
+3. Set the secrets marked `sync: false` in the service's **Environment** tab:
+   - `JWT_SECRET_KEY` — generate a fresh one, **do not reuse the development value**:
+     `python -c "import secrets; print(secrets.token_urlsafe(48))"`
+   - `CORS_ORIGINS` — the frontend origin, e.g. `https://your-app.vercel.app`
+   - `OPENAI_API_KEY` — optional; without it the AI endpoints return 503 and the rest
+     of the API works normally.
+4. Deploy. `alembic upgrade head` runs as the pre-deploy command, and Render probes
+   `/health` (which verifies database connectivity) before shifting traffic.
+
+Notes:
+
+- Render's `DATABASE_URL` uses the `postgres://` scheme; the app rewrites it to
+  `postgresql+asyncpg://` automatically.
+- If your plan does not support `preDeployCommand`, remove it from `render.yaml` and
+  run `alembic upgrade head` once from the Render shell after the first deploy.
+- If the managed database requires TLS, append `?ssl=require` to `DATABASE_URL`.

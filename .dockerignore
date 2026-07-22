@@ -1,0 +1,29 @@
+# Virtualenvs and caches
+.venv
+venv
+__pycache__
+**/__pycache__
+*.py[cod]
+.mypy_cache
+.pytest_cache
+.ruff_cache
+
+# VCS and local tooling
+.git
+.gitignore
+.github
+
+# Secrets and local env
+.env
+.env.*
+!.env.example
+
+# Tests and docs are not needed at runtime
+tests
+README.md
+LICENSE
+
+# Developer tooling directory, EXCEPT the runtime prompt file which
+# app/services/ai/prompts.py reads at runtime.
+.claude/**
+!.claude/prompts.md

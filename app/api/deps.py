@@ -7,12 +7,15 @@ from fastapi import Depends
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.core.config import Settings, get_settings
 from app.core.database import get_db
 from app.core.security import decode_token
 from app.models.user import User
 from app.repositories.goal import GoalRepository
 from app.repositories.meal import MealRepository
 from app.repositories.user import UserRepository
+from app.services.ai.client import OpenAIChatClient
+from app.services.ai.nutrition import NutritionAIService
 from app.services.auth import AuthService, InvalidTokenError
 from app.services.dashboard import DashboardService
 from app.services.meal import MealService
@@ -49,6 +52,17 @@ def get_dashboard_service(
     goal_repository: GoalRepository = Depends(get_goal_repository),
 ) -> DashboardService:
     return DashboardService(meal_repository, goal_repository)
+
+
+def get_nutrition_ai_service(
+    settings: Settings = Depends(get_settings),
+) -> NutritionAIService:
+    """Build the AI service.
+
+    Raises ``AIUnavailableError`` (503) when no API key is configured, so the
+    rest of the API keeps working without AI credentials.
+    """
+    return NutritionAIService(OpenAIChatClient(settings))
 
 
 async def get_current_user(

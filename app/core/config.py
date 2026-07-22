@@ -34,7 +34,8 @@ class Settings(BaseSettings):
         alias="CORS_ORIGINS",
     )
 
-    jwt_secret_key: str = Field(alias="JWT_SECRET_KEY")
+    # 32 chars is the minimum recommended for HS256 (RFC 7518 §3.2).
+    jwt_secret_key: str = Field(alias="JWT_SECRET_KEY", min_length=32)
     jwt_algorithm: str = Field(default="HS256", alias="JWT_ALGORITHM")
     access_token_expire_minutes: int = Field(
         default=60, alias="ACCESS_TOKEN_EXPIRE_MINUTES"
@@ -42,6 +43,12 @@ class Settings(BaseSettings):
     refresh_token_expire_days: int = Field(
         default=7, alias="REFRESH_TOKEN_EXPIRE_DAYS"
     )
+
+    # Optional so the application still boots without AI configured; the AI
+    # endpoints return 503 until a key is supplied.
+    openai_api_key: str | None = Field(default=None, alias="OPENAI_API_KEY")
+    openai_model: str = Field(default="gpt-5.4-mini", alias="OPENAI_MODEL")
+    openai_timeout_seconds: float = Field(default=30.0, alias="OPENAI_TIMEOUT_SECONDS")
 
     @field_validator("cors_origins", mode="before")
     @classmethod
