@@ -23,7 +23,5 @@ tests
 README.md
 LICENSE
 
-# Developer tooling directory, EXCEPT the runtime prompt file which
-# app/services/ai/prompts.py reads at runtime.
-.claude/**
-!.claude/prompts.md
+# Developer tooling directory: not needed at runtime.
+.claude

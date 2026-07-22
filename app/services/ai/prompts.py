@@ -1,34 +1,43 @@
-"""Prompt loading.
+"""Prompt registry.
 
-Prompts live in ``prompts.md`` (never inline in source). Each prompt is a
-``## <name>`` section; the loader returns the text up to the next ``##`` heading.
+Prompts live here rather than in a markdown file so they are version-controlled
+and ship with the application package (the repository's ``.gitignore`` excludes
+``*.md``, and a runtime dependency on an untracked file would break deploys).
+
+Prompt text is kept as module-level constants and reached through
+:func:`load_prompt`; nothing outside this module embeds prompt text.
 """
 
-import re
-from functools import lru_cache
-from pathlib import Path
+NUTRITION_TEXT_ANALYSIS = """\
+You are an expert nutritionist.
 
-_PROMPTS_PATH = Path(__file__).resolve().parents[3] / ".claude" / "prompts.md"
+Given a meal description, estimate the nutrition of each distinct food item you can
+identify.
+
+Rules:
+
+- Break the meal into individual food items.
+- Estimate calories (whole number), and protein, carbohydrates, and fat in grams.
+- Assume typical serving sizes when quantities are not stated.
+- `confidence` is your certainty for that item, from 0 to 1.
+- Never return negative values.
+- If the description contains no recognizable food, return an empty `food_items` list.
+
+Return ONLY valid JSON matching the provided schema.\
+"""
+
+_PROMPTS: dict[str, str] = {
+    "nutrition_text_analysis": NUTRITION_TEXT_ANALYSIS,
+}
 
 
 class PromptNotFoundError(LookupError):
-    """Raised when a named prompt section is absent from ``prompts.md``."""
+    """Raised when a named prompt is not registered."""
 
 
-@lru_cache
 def load_prompt(name: str) -> str:
-    """Return the prompt text stored under ``## <name>``."""
+    """Return the registered prompt text for ``name``."""
     try:
-        content = _PROMPTS_PATH.read_text(encoding="utf-8")
-    except OSError as exc:  # pragma: no cover - filesystem failure
-        raise PromptNotFoundError(f"cannot read {_PROMPTS_PATH}") from exc
-
-    pattern = rf"^##\s+{re.escape(name)}\s*$(.*?)(?=^##\s|\Z)"
-    match = re.search(pattern, content, flags=re.MULTILINE | re.DOTALL)
-    if match is None:
-        raise PromptNotFoundError(f"prompt '{name}' not found in {_PROMPTS_PATH}")
-
-    prompt = match.group(1).strip()
-    if not prompt:
-        raise PromptNotFoundError(f"prompt '{name}' is empty")
-    return prompt
+        return _PROMPTS[name]
+    except KeyError as exc:
+        raise PromptNotFoundError(f"prompt '{name}' is not registered") from exc

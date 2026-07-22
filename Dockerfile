@@ -16,11 +16,11 @@ WORKDIR /app
 COPY pyproject.toml uv.lock ./
 RUN uv sync --frozen --no-dev
 
-# Application source, migrations, and the runtime prompt file.
+# Application source and migrations. Prompts live in app/services/ai/prompts.py,
+# so no extra files are needed at runtime.
 COPY app ./app
 COPY alembic ./alembic
 COPY alembic.ini ./
-COPY .claude/prompts.md ./.claude/prompts.md
 
 # Run as an unprivileged user.
 RUN useradd --create-home --uid 1000 appuser && chown -R appuser:appuser /app

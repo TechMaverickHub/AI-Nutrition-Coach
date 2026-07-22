@@ -172,10 +172,10 @@ async def test_ai_returns_503_when_not_configured(client: AsyncClient) -> None:
         OpenAIChatClient(settings)
 
 
-def test_load_prompt_reads_named_section() -> None:
+def test_load_prompt_returns_registered_prompt() -> None:
     prompt = load_prompt("nutrition_text_analysis")
     assert "nutritionist" in prompt.lower()
-    assert "##" not in prompt
+    assert prompt.strip() == prompt
 
 
 def test_load_prompt_rejects_unknown_name() -> None:
