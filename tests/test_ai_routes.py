@@ -89,7 +89,7 @@ async def test_analyze_text_returns_items_and_totals(current_user: User) -> None
     assert float(body["total_protein"]) == 34.0
     assert float(body["total_fat"]) == 12.5
     assert body["confidence"] == 0.85
-    # The description was forwarded and the prompt came from prompts.md.
+    # The description was forwarded and the prompt came from the prompt registry.
     assert fake.calls[0]["user_content"] == "chicken and rice"
     assert "nutritionist" in fake.calls[0]["system_prompt"].lower()
 
