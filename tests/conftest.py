@@ -15,14 +15,23 @@ os.environ.setdefault(
 import uuid  # noqa: E402
 from collections.abc import AsyncGenerator  # noqa: E402
 from datetime import UTC, datetime  # noqa: E402
+from decimal import Decimal  # noqa: E402
 
 import pytest  # noqa: E402
 from httpx import ASGITransport, AsyncClient  # noqa: E402
 
-from app.api.deps import get_user_repository  # noqa: E402
+from app.api.deps import (  # noqa: E402
+    get_current_user,
+    get_goal_repository,
+    get_meal_repository,
+    get_user_repository,
+)
 from app.core.database import get_db  # noqa: E402
 from app.main import create_app  # noqa: E402
+from app.models.goal import Goal  # noqa: E402
+from app.models.meal import Meal  # noqa: E402
 from app.models.user import User  # noqa: E402
+from app.repositories.meal import NutritionAggregate  # noqa: E402
 
 
 class _FakeSession:
@@ -62,9 +71,107 @@ class InMemoryUserRepository:
         return None
 
 
+class InMemoryMealRepository:
+    """In-memory implementation of :class:`MealRepository` for tests."""
+
+    def __init__(self) -> None:
+        self._meals: dict[uuid.UUID, Meal] = {}
+
+    async def create(self, meal: Meal) -> Meal:
+        if meal.id is None:
+            meal.id = uuid.uuid4()
+        if meal.created_at is None:
+            meal.created_at = datetime.now(UTC)
+        for item in meal.food_items:
+            if item.id is None:
+                item.id = uuid.uuid4()
+        self._meals[meal.id] = meal
+        return meal
+
+    async def get_by_id(self, meal_id: uuid.UUID) -> Meal | None:
+        return self._meals.get(meal_id)
+
+    async def list_by_user(
+        self, user_id: uuid.UUID, limit: int, offset: int
+    ) -> list[Meal]:
+        owned = [m for m in self._meals.values() if m.user_id == user_id]
+        owned.sort(key=lambda m: m.meal_time, reverse=True)
+        return owned[offset : offset + limit]
+
+    async def delete(self, meal: Meal) -> None:
+        self._meals.pop(meal.id, None)
+
+    async def aggregate_for_period(
+        self, user_id: uuid.UUID, start: datetime, end: datetime
+    ) -> NutritionAggregate:
+        meals = [
+            m
+            for m in self._meals.values()
+            if m.user_id == user_id and start <= m.meal_time < end
+        ]
+        items = [item for meal in meals for item in meal.food_items]
+        return NutritionAggregate(
+            calories=sum(item.calories for item in items),
+            protein=sum((item.protein for item in items), Decimal(0)),
+            carbs=sum((item.carbs for item in items), Decimal(0)),
+            fat=sum((item.fat for item in items), Decimal(0)),
+            meal_count=len(meals),
+        )
+
+
+class InMemoryGoalRepository:
+    """In-memory implementation of :class:`GoalRepository` for tests."""
+
+    def __init__(self) -> None:
+        self._goals: dict[uuid.UUID, Goal] = {}
+
+    async def get_by_user(self, user_id: uuid.UUID) -> Goal | None:
+        return self._goals.get(user_id)
+
+    def set_goal(self, goal: Goal) -> None:
+        """Test helper — no public endpoint creates goals yet."""
+        self._goals[goal.user_id] = goal
+
+
 @pytest.fixture
 def user_repository() -> InMemoryUserRepository:
     return InMemoryUserRepository()
+
+
+@pytest.fixture
+def goal_repository() -> InMemoryGoalRepository:
+    return InMemoryGoalRepository()
+
+
+@pytest.fixture
+def meal_repository() -> InMemoryMealRepository:
+    return InMemoryMealRepository()
+
+
+@pytest.fixture
+def current_user() -> User:
+    user = User(email="owner@example.com", hashed_password="x")
+    user.id = uuid.uuid4()
+    user.created_at = datetime.now(UTC)
+    return user
+
+
+@pytest.fixture
+async def auth_client(
+    meal_repository: InMemoryMealRepository,
+    goal_repository: InMemoryGoalRepository,
+    current_user: User,
+) -> AsyncGenerator[AsyncClient, None]:
+    """HTTPX client with an authenticated user and in-memory repositories."""
+    app = create_app()
+    app.dependency_overrides[get_db] = _override_get_db
+    app.dependency_overrides[get_meal_repository] = lambda: meal_repository
+    app.dependency_overrides[get_goal_repository] = lambda: goal_repository
+    app.dependency_overrides[get_current_user] = lambda: current_user
+    transport = ASGITransport(app=app)
+    async with AsyncClient(transport=transport, base_url="http://test") as ac:
+        yield ac
+    app.dependency_overrides.clear()
 
 
 @pytest.fixture

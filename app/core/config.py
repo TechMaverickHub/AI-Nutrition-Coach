@@ -5,9 +5,10 @@ directly; inject :func:`get_settings` instead.
 """
 
 from functools import lru_cache
+from typing import Annotated
 
 from pydantic import Field, field_validator
-from pydantic_settings import BaseSettings, SettingsConfigDict
+from pydantic_settings import BaseSettings, NoDecode, SettingsConfigDict
 
 
 class Settings(BaseSettings):
@@ -26,7 +27,9 @@ class Settings(BaseSettings):
     database_url: str = Field(alias="DATABASE_URL")
     app_env: str = Field(default="development", alias="APP_ENV")
     log_level: str = Field(default="INFO", alias="LOG_LEVEL")
-    cors_origins: list[str] = Field(
+    # NoDecode disables pydantic-settings' source-level JSON decoding so the
+    # validator below can accept a plain comma-separated string.
+    cors_origins: Annotated[list[str], NoDecode] = Field(
         default_factory=lambda: ["http://localhost:5173"],
         alias="CORS_ORIGINS",
     )

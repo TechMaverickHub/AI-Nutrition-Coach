@@ -10,8 +10,12 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.core.database import get_db
 from app.core.security import decode_token
 from app.models.user import User
+from app.repositories.goal import GoalRepository
+from app.repositories.meal import MealRepository
 from app.repositories.user import UserRepository
 from app.services.auth import AuthService, InvalidTokenError
+from app.services.dashboard import DashboardService
+from app.services.meal import MealService
 
 _bearer = HTTPBearer(auto_error=False)
 
@@ -24,6 +28,27 @@ def get_auth_service(
     repository: UserRepository = Depends(get_user_repository),
 ) -> AuthService:
     return AuthService(repository)
+
+
+def get_meal_repository(db: AsyncSession = Depends(get_db)) -> MealRepository:
+    return MealRepository(db)
+
+
+def get_meal_service(
+    repository: MealRepository = Depends(get_meal_repository),
+) -> MealService:
+    return MealService(repository)
+
+
+def get_goal_repository(db: AsyncSession = Depends(get_db)) -> GoalRepository:
+    return GoalRepository(db)
+
+
+def get_dashboard_service(
+    meal_repository: MealRepository = Depends(get_meal_repository),
+    goal_repository: GoalRepository = Depends(get_goal_repository),
+) -> DashboardService:
+    return DashboardService(meal_repository, goal_repository)
 
 
 async def get_current_user(

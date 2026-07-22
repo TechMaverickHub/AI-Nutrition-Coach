@@ -20,11 +20,12 @@ from app.core.security import (
 from app.models.user import User
 from app.repositories.user import UserRepository
 from app.schemas.auth import TokenPair, UserCreate
+from app.services.exceptions import AppError
 
 logger = logging.getLogger(__name__)
 
 
-class AuthError(Exception):
+class AuthError(AppError):
     """Base class for authentication failures."""
 
     status_code = 400
