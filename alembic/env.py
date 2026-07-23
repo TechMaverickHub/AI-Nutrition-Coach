@@ -16,9 +16,11 @@ from app.core.database import Base
 # access to the values within the .ini file in use.
 config = context.config
 
-# Bind the connection URL to application settings (asyncpg driver),
-# overriding any placeholder in alembic.ini.
-config.set_main_option("sqlalchemy.url", get_settings().async_database_url)
+# The connection URL comes from application settings (asyncpg driver), overriding
+# any placeholder in alembic.ini. It is injected directly where it is used rather
+# than via config.set_main_option(), because that routes the value through
+# ConfigParser, whose '%' interpolation corrupts percent-encoded passwords
+# (e.g. '%40' for '@').
 
 # Interpret the config file for Python logging.
 # This line sets up loggers basically.
@@ -46,7 +48,7 @@ def run_migrations_offline() -> None:
     script output.
 
     """
-    url = config.get_main_option("sqlalchemy.url")
+    url = get_settings().async_database_url
     context.configure(
         url=url,
         target_metadata=target_metadata,
@@ -71,8 +73,13 @@ async def run_async_migrations() -> None:
 
     """
 
+    # Inject the URL into the config dict in Python, bypassing ConfigParser's
+    # '%' interpolation so percent-encoded passwords survive intact.
+    configuration = config.get_section(config.config_ini_section, {})
+    configuration["sqlalchemy.url"] = get_settings().async_database_url
+
     connectable = async_engine_from_config(
-        config.get_section(config.config_ini_section, {}),
+        configuration,
         prefix="sqlalchemy.",
         poolclass=pool.NullPool,
     )

@@ -3,7 +3,11 @@
 from datetime import date
 from decimal import Decimal
 
-from pydantic import BaseModel, ConfigDict
+from pydantic import BaseModel
+
+from app.schemas.goal import GoalRead
+
+__all__ = ["DashboardRead", "GoalRead", "NutritionTotals"]
 
 
 class NutritionTotals(BaseModel):
@@ -13,17 +17,6 @@ class NutritionTotals(BaseModel):
     protein: Decimal
     carbs: Decimal
     fat: Decimal
-
-
-class GoalRead(BaseModel):
-    """A user's daily nutrition targets."""
-
-    model_config = ConfigDict(from_attributes=True)
-
-    daily_calories: int
-    protein_goal: Decimal
-    carb_goal: Decimal
-    fat_goal: Decimal
 
 
 class DashboardRead(BaseModel):

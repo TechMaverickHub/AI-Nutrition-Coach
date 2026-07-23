@@ -18,6 +18,7 @@ from app.services.ai.client import OpenAIChatClient
 from app.services.ai.nutrition import NutritionAIService
 from app.services.auth import AuthService, InvalidTokenError
 from app.services.dashboard import DashboardService
+from app.services.goal import GoalService
 from app.services.meal import MealService
 
 _bearer = HTTPBearer(auto_error=False)
@@ -45,6 +46,12 @@ def get_meal_service(
 
 def get_goal_repository(db: AsyncSession = Depends(get_db)) -> GoalRepository:
     return GoalRepository(db)
+
+
+def get_goal_service(
+    repository: GoalRepository = Depends(get_goal_repository),
+) -> GoalService:
+    return GoalService(repository)
 
 
 def get_dashboard_service(

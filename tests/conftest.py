@@ -128,8 +128,21 @@ class InMemoryGoalRepository:
     async def get_by_user(self, user_id: uuid.UUID) -> Goal | None:
         return self._goals.get(user_id)
 
+    async def create(self, goal: Goal) -> Goal:
+        if goal.id is None:
+            goal.id = uuid.uuid4()
+        self._goals[goal.user_id] = goal
+        return goal
+
+    async def update(self, goal: Goal) -> Goal:
+        self._goals[goal.user_id] = goal
+        return goal
+
+    async def rollback(self) -> None:
+        return None
+
     def set_goal(self, goal: Goal) -> None:
-        """Test helper — no public endpoint creates goals yet."""
+        """Test helper for seeding a goal directly."""
         self._goals[goal.user_id] = goal
 
 

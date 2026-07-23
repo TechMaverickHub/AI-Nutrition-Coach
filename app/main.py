@@ -4,7 +4,7 @@ from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 
-from app.api.routes import ai, auth, dashboard, health, meal, user
+from app.api.routes import ai, auth, dashboard, goal, health, meal, user
 from app.core.config import get_settings
 from app.core.logging import configure_logging
 from app.services.exceptions import AppError
@@ -34,6 +34,7 @@ def create_app() -> FastAPI:
     app.include_router(user.router)
     app.include_router(meal.router)
     app.include_router(dashboard.router)
+    app.include_router(goal.router)
     app.include_router(ai.router)
     return app
 
