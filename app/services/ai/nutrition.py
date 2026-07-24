@@ -1,93 +1,44 @@
-"""Nutrition estimation from natural language, backed by an LLM."""
+"""Nutrition estimation from natural language, backed by a LangChain chain."""
 
-import json
 import logging
-from typing import Any
 
+from langchain_core.exceptions import OutputParserException
+from langchain_core.runnables import Runnable
 from pydantic import ValidationError
 
 from app.schemas.ai import NutritionAnalysis
-from app.services.ai.client import ChatJSONClient
-from app.services.ai.errors import AIResponseError
-from app.services.ai.prompts import load_prompt
+from app.services.ai.errors import AIResponseError, AIUnavailableError
 
 logger = logging.getLogger(__name__)
 
-_PROMPT_NAME = "nutrition_text_analysis"
-_SCHEMA_NAME = "nutrition_analysis"
-
-# Hand-written rather than derived from the DTO: OpenAI structured outputs require
-# every property listed in `required` and `additionalProperties: false`, which the
-# generated Pydantic schema does not satisfy.
-_NULLABLE_CONFIDENCE: dict[str, Any] = {
-    "type": ["number", "null"],
-    "minimum": 0,
-    "maximum": 1,
-}
-
-_ANALYSIS_SCHEMA: dict[str, Any] = {
-    "type": "object",
-    "additionalProperties": False,
-    "required": ["food_items", "confidence"],
-    "properties": {
-        "food_items": {
-            "type": "array",
-            "items": {
-                "type": "object",
-                "additionalProperties": False,
-                "required": [
-                    "name",
-                    "calories",
-                    "protein",
-                    "carbs",
-                    "fat",
-                    "confidence",
-                ],
-                "properties": {
-                    "name": {"type": "string"},
-                    "calories": {"type": "integer", "minimum": 0},
-                    "protein": {"type": "number", "minimum": 0},
-                    "carbs": {"type": "number", "minimum": 0},
-                    "fat": {"type": "number", "minimum": 0},
-                    "confidence": _NULLABLE_CONFIDENCE,
-                },
-            },
-        },
-        "confidence": _NULLABLE_CONFIDENCE,
-    },
-}
-
 
 class NutritionAIService:
-    """Turns a meal description into a validated :class:`NutritionAnalysis`."""
+    """Turns a meal description into a validated :class:`NutritionAnalysis`.
 
-    def __init__(self, client: ChatJSONClient) -> None:
-        self._client = client
+    Depends on a LangChain ``Runnable`` (built by ``build_nutrition_chain``), so
+    tests can inject a fake chain and run without a network or API key.
+    """
+
+    def __init__(self, chain: Runnable[dict[str, str], NutritionAnalysis]) -> None:
+        self._chain = chain
 
     async def analyze_text(self, description: str) -> NutritionAnalysis:
         """Estimate nutrition for ``description``.
 
-        Raises :class:`AIResponseError` when the model returns non-JSON or a
-        payload that fails validation, so malformed output never propagates.
+        LangChain parses and validates the model's reply, so this method only
+        invokes the chain and maps failures to domain errors:
+
+        - a malformed / schema-invalid model reply -> :class:`AIResponseError` (502)
+        - a provider or network failure -> :class:`AIUnavailableError` (503)
         """
-        raw = await self._client.complete_json(
-            system_prompt=load_prompt(_PROMPT_NAME),
-            user_content=description,
-            schema_name=_SCHEMA_NAME,
-            schema=_ANALYSIS_SCHEMA,
-        )
-
         try:
-            payload = json.loads(raw)
-        except json.JSONDecodeError as exc:
-            logger.error("AI returned non-JSON content (%d chars)", len(raw))
+            analysis = await self._chain.ainvoke({"description": description})
+        except (OutputParserException, ValidationError) as exc:
+            logger.error("AI returned an unusable response: %s", exc)
             raise AIResponseError() from exc
-
-        try:
-            analysis = NutritionAnalysis.model_validate(payload)
-        except ValidationError as exc:
-            logger.error("AI payload failed validation: %s", exc)
-            raise AIResponseError() from exc
+        except Exception as exc:  # noqa: BLE001 - upstream/provider failure
+            logger.error("AI request failed: %s", exc)
+            raise AIUnavailableError() from exc
 
         logger.info(
             "Analyzed description chars=%d items=%d",
