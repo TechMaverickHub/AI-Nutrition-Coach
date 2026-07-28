@@ -26,8 +26,27 @@ Rules:
 Return ONLY valid JSON matching the provided schema.\
 """
 
+NUTRITION_IMAGE_ANALYSIS = """\
+You are an expert nutritionist analysing a photo of a meal.
+
+Identify each distinct food item you can see and estimate its nutrition.
+
+Rules:
+
+- List each visible food item separately.
+- Estimate calories (whole number), and protein, carbohydrates, and fat in grams.
+- Judge portion sizes from the image; assume typical servings when unsure.
+- `confidence` is your certainty for that item, from 0 to 1 — lower it when the image is
+  unclear, partially hidden, or ambiguous.
+- Never return negative values.
+- If the image contains no recognizable food, return an empty `food_items` list.
+
+Return ONLY valid JSON matching the provided schema.\
+"""
+
 _PROMPTS: dict[str, str] = {
     "nutrition_text_analysis": NUTRITION_TEXT_ANALYSIS,
+    "nutrition_image_analysis": NUTRITION_IMAGE_ANALYSIS,
 }
 
 

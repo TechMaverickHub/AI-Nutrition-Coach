@@ -48,6 +48,9 @@ class Settings(BaseSettings):
     # endpoints return 503 until a key is supplied.
     openai_api_key: str | None = Field(default=None, alias="OPENAI_API_KEY")
     openai_model: str = Field(default="gpt-5.4-mini", alias="OPENAI_MODEL")
+    openai_vision_model: str = Field(
+        default="gpt-5.4-mini", alias="OPENAI_VISION_MODEL"
+    )
     openai_timeout_seconds: float = Field(default=30.0, alias="OPENAI_TIMEOUT_SECONDS")
 
     @field_validator("cors_origins", mode="before")

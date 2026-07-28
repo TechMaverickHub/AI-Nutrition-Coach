@@ -14,8 +14,9 @@ from app.models.user import User
 from app.repositories.goal import GoalRepository
 from app.repositories.meal import MealRepository
 from app.repositories.user import UserRepository
-from app.services.ai.chain import build_nutrition_chain
+from app.services.ai.chain import build_nutrition_chain, build_vision_chain
 from app.services.ai.nutrition import NutritionAIService
+from app.services.ai.vision import VisionAIService
 from app.services.auth import AuthService, InvalidTokenError
 from app.services.dashboard import DashboardService
 from app.services.goal import GoalService
@@ -70,6 +71,16 @@ def get_nutrition_ai_service(
     rest of the API keeps working without AI credentials.
     """
     return NutritionAIService(build_nutrition_chain(settings))
+
+
+def get_vision_ai_service(
+    settings: Settings = Depends(get_settings),
+) -> VisionAIService:
+    """Build the vision AI service.
+
+    Raises ``AIUnavailableError`` (503) when no API key is configured.
+    """
+    return VisionAIService(build_vision_chain(settings))
 
 
 async def get_current_user(
