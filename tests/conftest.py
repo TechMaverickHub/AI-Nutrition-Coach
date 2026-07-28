@@ -28,6 +28,7 @@ from app.api.deps import (  # noqa: E402
 )
 from app.core.database import get_db  # noqa: E402
 from app.main import create_app  # noqa: E402
+from app.models.conversation import Conversation, Message  # noqa: E402
 from app.models.goal import Goal  # noqa: E402
 from app.models.meal import Meal  # noqa: E402
 from app.models.user import User  # noqa: E402
@@ -146,6 +147,44 @@ class InMemoryGoalRepository:
         self._goals[goal.user_id] = goal
 
 
+class InMemoryConversationRepository:
+    """In-memory implementation of :class:`ConversationRepository` for tests."""
+
+    def __init__(self) -> None:
+        self._by_id: dict[uuid.UUID, Conversation] = {}
+
+    async def create(self, conversation: Conversation) -> Conversation:
+        if conversation.id is None:
+            conversation.id = uuid.uuid4()
+        now = datetime.now(UTC)
+        if conversation.created_at is None:
+            conversation.created_at = now
+        conversation.updated_at = now
+        self._by_id[conversation.id] = conversation
+        return conversation
+
+    async def get_by_id(self, conversation_id: uuid.UUID) -> Conversation | None:
+        return self._by_id.get(conversation_id)
+
+    async def list_by_user(self, user_id: uuid.UUID) -> list[Conversation]:
+        owned = [c for c in self._by_id.values() if c.user_id == user_id]
+        owned.sort(key=lambda c: c.updated_at, reverse=True)
+        return owned
+
+    async def add_messages(self, *messages: Message) -> None:
+        for message in messages:
+            if message.id is None:
+                message.id = uuid.uuid4()
+            if message.created_at is None:
+                message.created_at = datetime.now(UTC)
+            conversation = self._by_id.get(message.conversation_id)
+            if conversation is not None:
+                conversation.messages.append(message)
+
+    async def delete(self, conversation: Conversation) -> None:
+        self._by_id.pop(conversation.id, None)
+
+
 @pytest.fixture
 def user_repository() -> InMemoryUserRepository:
     return InMemoryUserRepository()
@@ -154,6 +193,11 @@ def user_repository() -> InMemoryUserRepository:
 @pytest.fixture
 def goal_repository() -> InMemoryGoalRepository:
     return InMemoryGoalRepository()
+
+
+@pytest.fixture
+def conversation_repository() -> InMemoryConversationRepository:
+    return InMemoryConversationRepository()
 
 
 @pytest.fixture

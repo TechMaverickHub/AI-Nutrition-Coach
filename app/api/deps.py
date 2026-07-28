@@ -11,13 +11,19 @@ from app.core.config import Settings, get_settings
 from app.core.database import get_db
 from app.core.security import decode_token
 from app.models.user import User
+from app.repositories.conversation import ConversationRepository
 from app.repositories.goal import GoalRepository
 from app.repositories.meal import MealRepository
 from app.repositories.user import UserRepository
-from app.services.ai.chain import build_nutrition_chain, build_vision_chain
+from app.services.ai.chain import (
+    build_coach_model,
+    build_nutrition_chain,
+    build_vision_chain,
+)
 from app.services.ai.nutrition import NutritionAIService
 from app.services.ai.vision import VisionAIService
 from app.services.auth import AuthService, InvalidTokenError
+from app.services.coach import CoachService
 from app.services.dashboard import DashboardService
 from app.services.goal import GoalService
 from app.services.meal import MealService
@@ -81,6 +87,26 @@ def get_vision_ai_service(
     Raises ``AIUnavailableError`` (503) when no API key is configured.
     """
     return VisionAIService(build_vision_chain(settings))
+
+
+def get_conversation_repository(
+    db: AsyncSession = Depends(get_db),
+) -> ConversationRepository:
+    return ConversationRepository(db)
+
+
+def get_coach_service(
+    settings: Settings = Depends(get_settings),
+    conversation_repository: ConversationRepository = Depends(get_conversation_repository),
+    dashboard_service: DashboardService = Depends(get_dashboard_service),
+) -> CoachService:
+    """Build the coach service.
+
+    Raises ``AIUnavailableError`` (503) when no API key is configured.
+    """
+    return CoachService(
+        build_coach_model(settings), conversation_repository, dashboard_service
+    )
 
 
 async def get_current_user(

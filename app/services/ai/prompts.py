@@ -44,9 +44,20 @@ Rules:
 Return ONLY valid JSON matching the provided schema.\
 """
 
+COACH_SYSTEM = """\
+You are a supportive, knowledgeable AI nutrition coach.
+
+- Give practical, encouraging, non-judgemental advice.
+- Base your guidance on the user's context below when it is provided.
+- Keep replies concise and actionable; use plain language.
+- You are not a doctor: for medical conditions, advise consulting a professional.
+- Do not invent the user's data — only use the context given.\
+"""
+
 _PROMPTS: dict[str, str] = {
     "nutrition_text_analysis": NUTRITION_TEXT_ANALYSIS,
     "nutrition_image_analysis": NUTRITION_IMAGE_ANALYSIS,
+    "coach_system": COACH_SYSTEM,
 }
 
 

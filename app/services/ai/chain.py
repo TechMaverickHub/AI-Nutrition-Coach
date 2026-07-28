@@ -62,6 +62,16 @@ def build_nutrition_chain(settings: Settings) -> Runnable[dict[str, str], Nutrit
     return cast("Runnable[dict[str, str], NutritionAnalysis]", prompt | structured_model)
 
 
+def build_coach_model(settings: Settings) -> BaseChatModel:
+    """Build the chat model for the coach.
+
+    Unlike the analysis chains this returns a plain chat model (free-text reply,
+    no structured output). The caller supplies the message list each turn.
+    Raises :class:`AIUnavailableError` (503) when no API key is configured.
+    """
+    return _build_chat_model(settings, settings.openai_model)
+
+
 def build_vision_chain(settings: Settings) -> Runnable[list[Any], NutritionAnalysis]:
     """Build the vision chain: the structured model alone.
 

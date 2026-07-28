@@ -12,6 +12,7 @@ from sqlalchemy.orm import Mapped, mapped_column, relationship
 from app.core.database import Base
 
 if TYPE_CHECKING:
+    from app.models.conversation import Conversation
     from app.models.goal import Goal
     from app.models.meal import Meal
 
@@ -52,5 +53,9 @@ class User(Base):
     goal: Mapped["Goal | None"] = relationship(
         back_populates="user",
         uselist=False,
+        cascade="all, delete-orphan",
+    )
+    conversations: Mapped[list["Conversation"]] = relationship(
+        back_populates="user",
         cascade="all, delete-orphan",
     )
