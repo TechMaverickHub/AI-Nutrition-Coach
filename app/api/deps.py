@@ -22,6 +22,7 @@ from app.services.ai.chain import (
 )
 from app.services.ai.nutrition import NutritionAIService
 from app.services.ai.vision import VisionAIService
+from app.services.analytics import AnalyticsService
 from app.services.auth import AuthService, InvalidTokenError
 from app.services.coach import CoachService
 from app.services.dashboard import DashboardService
@@ -66,6 +67,13 @@ def get_dashboard_service(
     goal_repository: GoalRepository = Depends(get_goal_repository),
 ) -> DashboardService:
     return DashboardService(meal_repository, goal_repository)
+
+
+def get_analytics_service(
+    meal_repository: MealRepository = Depends(get_meal_repository),
+    goal_repository: GoalRepository = Depends(get_goal_repository),
+) -> AnalyticsService:
+    return AnalyticsService(meal_repository, goal_repository)
 
 
 def get_nutrition_ai_service(

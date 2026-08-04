@@ -14,7 +14,7 @@ os.environ.setdefault(
 
 import uuid  # noqa: E402
 from collections.abc import AsyncGenerator  # noqa: E402
-from datetime import UTC, datetime  # noqa: E402
+from datetime import UTC, date, datetime  # noqa: E402
 from decimal import Decimal  # noqa: E402
 
 import pytest  # noqa: E402
@@ -118,6 +118,26 @@ class InMemoryMealRepository:
             fat=sum((item.fat for item in items), Decimal(0)),
             meal_count=len(meals),
         )
+
+    async def daily_aggregates(
+        self, user_id: uuid.UUID, start: datetime, end: datetime
+    ) -> dict[date, NutritionAggregate]:
+        buckets: dict[date, list[Meal]] = {}
+        for meal in self._meals.values():
+            if meal.user_id == user_id and start <= meal.meal_time < end:
+                day = meal.meal_time.astimezone(UTC).date()
+                buckets.setdefault(day, []).append(meal)
+        result: dict[date, NutritionAggregate] = {}
+        for day, meals in buckets.items():
+            items = [item for meal in meals for item in meal.food_items]
+            result[day] = NutritionAggregate(
+                calories=sum(item.calories for item in items),
+                protein=sum((item.protein for item in items), Decimal(0)),
+                carbs=sum((item.carbs for item in items), Decimal(0)),
+                fat=sum((item.fat for item in items), Decimal(0)),
+                meal_count=len(meals),
+            )
+        return result
 
 
 class InMemoryGoalRepository:

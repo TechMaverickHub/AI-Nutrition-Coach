@@ -2,10 +2,10 @@
 
 import uuid
 from dataclasses import dataclass
-from datetime import datetime
+from datetime import date, datetime
 from decimal import Decimal
 
-from sqlalchemy import distinct, func, select
+from sqlalchemy import Date, cast, distinct, func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
@@ -101,3 +101,44 @@ class MealRepository:
             fat=Decimal(row.fat),
             meal_count=int(row.meal_count),
         )
+
+    async def daily_aggregates(
+        self,
+        user_id: uuid.UUID,
+        start: datetime,
+        end: datetime,
+    ) -> dict[date, NutritionAggregate]:
+        """Sum nutrition per UTC day across ``[start, end)``.
+
+        Grouping happens in SQL, bucketed by the meal's UTC calendar date. Returns
+        a map keyed by date, containing only days that have at least one meal.
+        """
+        day = cast(func.timezone("UTC", Meal.meal_time), Date).label("day")
+        result = await self._session.execute(
+            select(
+                day,
+                func.coalesce(func.sum(FoodItem.calories), 0).label("calories"),
+                func.coalesce(func.sum(FoodItem.protein), 0).label("protein"),
+                func.coalesce(func.sum(FoodItem.carbs), 0).label("carbs"),
+                func.coalesce(func.sum(FoodItem.fat), 0).label("fat"),
+                func.count(distinct(Meal.id)).label("meal_count"),
+            )
+            .select_from(Meal)
+            .outerjoin(FoodItem, FoodItem.meal_id == Meal.id)
+            .where(
+                Meal.user_id == user_id,
+                Meal.meal_time >= start,
+                Meal.meal_time < end,
+            )
+            .group_by(day)
+        )
+        return {
+            row.day: NutritionAggregate(
+                calories=int(row.calories),
+                protein=Decimal(row.protein),
+                carbs=Decimal(row.carbs),
+                fat=Decimal(row.fat),
+                meal_count=int(row.meal_count),
+            )
+            for row in result.all()
+        }
