@@ -61,3 +61,10 @@ class NutritionAnalysis(BaseModel):
     @property
     def total_fat(self) -> Decimal:
         return sum((item.fat for item in self.food_items), Decimal(0))
+
+
+class VoiceAnalysisResponse(BaseModel):
+    """The transcript of spoken audio plus its nutrition analysis."""
+
+    transcript: str
+    analysis: NutritionAnalysis

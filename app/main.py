@@ -10,9 +10,11 @@ from app.api.routes import (
     auth,
     coach,
     dashboard,
+    export,
     goal,
     health,
     meal,
+    summary,
     user,
 )
 from app.core.config import get_settings
@@ -48,6 +50,8 @@ def create_app() -> FastAPI:
     app.include_router(ai.router)
     app.include_router(coach.router)
     app.include_router(analytics.router)
+    app.include_router(summary.router)
+    app.include_router(export.router)
     return app
 
 

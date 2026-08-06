@@ -18,16 +18,21 @@ from app.repositories.user import UserRepository
 from app.services.ai.chain import (
     build_coach_model,
     build_nutrition_chain,
+    build_summary_chain,
     build_vision_chain,
 )
 from app.services.ai.nutrition import NutritionAIService
+from app.services.ai.transcribe import OpenAITranscriber
 from app.services.ai.vision import VisionAIService
+from app.services.ai.voice import VoiceAIService
 from app.services.analytics import AnalyticsService
 from app.services.auth import AuthService, InvalidTokenError
 from app.services.coach import CoachService
 from app.services.dashboard import DashboardService
 from app.services.goal import GoalService
 from app.services.meal import MealService
+from app.services.report import ReportService
+from app.services.summary import SummaryService
 
 _bearer = HTTPBearer(auto_error=False)
 
@@ -76,6 +81,23 @@ def get_analytics_service(
     return AnalyticsService(meal_repository, goal_repository)
 
 
+def get_summary_service(
+    settings: Settings = Depends(get_settings),
+    analytics_service: AnalyticsService = Depends(get_analytics_service),
+) -> SummaryService:
+    """Build the weekly-summary service.
+
+    Raises ``AIUnavailableError`` (503) when no API key is configured.
+    """
+    return SummaryService(analytics_service, build_summary_chain(settings))
+
+
+def get_report_service(
+    analytics_service: AnalyticsService = Depends(get_analytics_service),
+) -> ReportService:
+    return ReportService(analytics_service)
+
+
 def get_nutrition_ai_service(
     settings: Settings = Depends(get_settings),
 ) -> NutritionAIService:
@@ -95,6 +117,17 @@ def get_vision_ai_service(
     Raises ``AIUnavailableError`` (503) when no API key is configured.
     """
     return VisionAIService(build_vision_chain(settings))
+
+
+def get_voice_ai_service(
+    settings: Settings = Depends(get_settings),
+    nutrition_service: NutritionAIService = Depends(get_nutrition_ai_service),
+) -> VoiceAIService:
+    """Build the voice AI service (transcriber + reused nutrition analysis).
+
+    Raises ``AIUnavailableError`` (503) when no API key is configured.
+    """
+    return VoiceAIService(OpenAITranscriber(settings), nutrition_service)
 
 
 def get_conversation_repository(

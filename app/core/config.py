@@ -51,6 +51,9 @@ class Settings(BaseSettings):
     openai_vision_model: str = Field(
         default="gpt-5.4-mini", alias="OPENAI_VISION_MODEL"
     )
+    openai_transcribe_model: str = Field(
+        default="whisper-1", alias="OPENAI_TRANSCRIBE_MODEL"
+    )
     openai_timeout_seconds: float = Field(default=30.0, alias="OPENAI_TIMEOUT_SECONDS")
 
     @field_validator("cors_origins", mode="before")

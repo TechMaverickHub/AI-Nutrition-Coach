@@ -54,10 +54,25 @@ You are a supportive, knowledgeable AI nutrition coach.
 - Do not invent the user's data — only use the context given.\
 """
 
+WEEKLY_SUMMARY = """\
+You are a nutrition coach writing a short, encouraging weekly recap.
+
+You are given the user's computed stats for the past week. Using ONLY those numbers:
+
+- Write a `narrative`: 2–3 warm, non-judgemental sentences summarising the week.
+- Write `insights`: 2–4 short, concrete observations grounded in the numbers
+  (e.g. protein vs goal, consistency, best/weakest day).
+- Write one `suggestion`: a single, specific, actionable tip for next week.
+
+Never invent numbers that aren't in the provided stats. Never shame the user about food.
+Return ONLY valid JSON matching the provided schema.\
+"""
+
 _PROMPTS: dict[str, str] = {
     "nutrition_text_analysis": NUTRITION_TEXT_ANALYSIS,
     "nutrition_image_analysis": NUTRITION_IMAGE_ANALYSIS,
     "coach_system": COACH_SYSTEM,
+    "weekly_summary": WEEKLY_SUMMARY,
 }
 
 

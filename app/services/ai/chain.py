@@ -22,6 +22,7 @@ from langchain_core.runnables import Runnable
 
 from app.core.config import Settings
 from app.schemas.ai import NutritionAnalysis
+from app.schemas.summary import WeeklyInsights
 from app.services.ai.errors import AIUnavailableError
 from app.services.ai.prompts import load_prompt
 
@@ -60,6 +61,20 @@ def build_nutrition_chain(settings: Settings) -> Runnable[dict[str, str], Nutrit
     )
     # with_structured_output is generically typed as dict | BaseModel; narrow it.
     return cast("Runnable[dict[str, str], NutritionAnalysis]", prompt | structured_model)
+
+
+def build_summary_chain(settings: Settings) -> Runnable[dict[str, str], WeeklyInsights]:
+    """Build the weekly-summary chain: ``prompt | model`` producing ``WeeklyInsights``."""
+    structured_model = _build_chat_model(settings, settings.openai_model).with_structured_output(
+        WeeklyInsights
+    )
+    prompt = ChatPromptTemplate.from_messages(
+        [
+            ("system", load_prompt("weekly_summary")),
+            ("human", "{context}"),
+        ]
+    )
+    return cast("Runnable[dict[str, str], WeeklyInsights]", prompt | structured_model)
 
 
 def build_coach_model(settings: Settings) -> BaseChatModel:
